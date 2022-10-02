@@ -1,39 +1,3 @@
-// const { assert } = require("chai")
-// const { network, ethers, getNamedAccounts, deployments } = require("hardhat")
-// const { developmentChains } = require("../../helper-hardhat-config")
-
-// !developmentChains.includes(network.name)
-//     ? describe.skip
-//     : describe("NFT Marketplace Tests", function () {
-//         let nftMarketplace, basicNft, deployer
-//         const PRICE = ethers.utils.parseEther("0.1")
-//         const TOKEN_ID = 0
-//         beforeEach(async function () {
-//             deployer = (await getNamedAccounts()).deployer
-//             // player = (await getNamedAccounts()).player
-//             const accounts = await ethers.getSigners()
-//             player = accounts[1]
-//             await deployments.fixture(["all"])
-//             nftMarketplace = await ethers.getContract("NftMarketplace")
-//             basicNft = await ethers.getContract("BasicNft")
-//             await basicNft.mintNft()
-//             await basicNft.approve(nftMarketplace.address, TOKEN_ID)
-//             await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
-//         })
-
-//         it("lists and can be bought", async function () {
-//             await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
-//             const playerConnectedNftMarketplace = nftMarketplace.connect(player)
-//             await playerConnectedNftMarketplace.buyItem(basicNft.address, TOKEN_ID, {
-//                 value: PRICE,
-//             })
-//             const newOwner = await basicNft.ownerOf(TOKEN_ID)
-//             const deployerProceeds = await nftMarketplace.getProceeds(deployer)
-//             await assert(newOwner.toString() == player.address)
-//             await assert(deployerProceeds.toString() == PRICE.toString())
-//         })
-//     })
-
 const { assert, expect } = require("chai")
 const { network, deployments, ethers } = require("hardhat")
 const { developmentChains } = require("../../helper-hardhat-config")
@@ -63,6 +27,32 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   expect(await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)).to.emit(
                       "ItemListed"
                   )
+              })
+              it("exclusively list items that haven't been listed", async function () {
+                  await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  const error = `AlreadyListed("${basicNft.address}", ${TOKEN_ID})`
+                  await expect(
+                      nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  ).to.be.revertedWith(error)
+              })
+              it("exclusively allows owners to list", async function () {
+                  nftMarketplace = nftMarketplaceContract.connect(user)
+                  await basicNft.approve(user.address, TOKEN_ID)
+                  await expect(
+                      nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  ).to.be.revertedWith("NotOwner")
+              })
+              it("needs approvals to list item", async function () {
+                  await basicNft.approve(ethers.constants.AddressZero, TOKEN_ID)
+                  await expect(
+                      nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  ).to.be.revertedWith("NotApprovedForMarketplace")
+              })
+              it("updates listing with seller and price", async function () {
+                  await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  const listing = await nftMarketplace.getListing(basicNft.address, TOKEN_ID)
+                  assert(listing.price.toString() == PRICE.toString())
+                  assert(listing.seller.toString() == deployer.address)
               })
           })
       })

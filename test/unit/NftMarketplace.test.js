@@ -76,6 +76,8 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   expect(await nftMarketplace.cancelListing(basicNft.address, TOKEN_ID)).to.emit(
                       "ItemCanceled"
                   )
+                  const listing = await nftMarketplace.getListing(basicNft.address, TOKEN_ID)
+                  assert(listing.price.toString() == "0")
               })
           })
       })

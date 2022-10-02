@@ -1,4 +1,4 @@
-const { assert, expect } = require("chai")
+const { assert, expect, use } = require("chai")
 const { network, deployments, ethers } = require("hardhat")
 const { developmentChains } = require("../../helper-hardhat-config")
 
@@ -80,4 +80,52 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   assert(listing.price.toString() == "0")
               })
           })
+
+          describe("buyItem", function () {
+              it("reverts if the item isnt listed", async function () {
+                  await expect(
+                      nftMarketplace.buyItem(basicNft.address, TOKEN_ID)
+                  ).to.be.revertedWith("NotListed")
+              })
+              it("reverts if the price isn't met", async function () {
+                  await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  await expect(
+                      nftMarketplace.buyItem(basicNft.address, TOKEN_ID)
+                  ).to.be.revertedWith("PriceNotMet")
+              })
+              it("transfer the nft to the buyer and updates internal proceeds record", async function () {
+                  await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                  nftMarketplace = nftMarketplaceContract.connect(user)
+                  expect(
+                      await nftMarketplace.buyItem(basicNft.address, TOKEN_ID, { value: PRICE })
+                  ).to.emit("ItemBought")
+                  const newOwner = await basicNft.ownerOf(TOKEN_ID)
+                  const deployerProceeds = await nftMarketplace.getProceeds(deployer.address)
+                  assert(newOwner.toString() == user.address)
+                  assert(deployerProceeds.toString() == PRICE.toString())
+              })
+          })
+
+          describe("updateListing", function () {
+            it("must be owner and listed", async function () {
+                await expect(nftMarketplace.updateListing(basicNft.address, TOKEN_ID, PRICE)).to.be.revertedWith("NotListed")
+                await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                nftMarketplace = nftMarketplaceContract.connect(user)
+                await expect(nftMarketplace.updateListing(basicNft.address, TOKEN_ID, PRICE)).to.be.revertedWith("NotOwner")
+            })
+            it("updates the price of the item", async function () {
+                const updatedPrice = ethers.utils.parseEther("0.2")
+                await nftMarketplace.listItem(basicNft.address, TOKEN_ID, PRICE)
+                expect(
+                    await nftMarketplace.updateListing(
+                        basicNft.address,
+                        TOKEN_ID,
+                        updatedPrice
+                    )
+                ).to.emit("ItemListed")
+                const listing = await nftMarketplace.getListing(basicNft.address, TOKEN_ID)
+                assert(listing.price.toString() == updatedPrice.toString())
+            })
+          })
+
       })

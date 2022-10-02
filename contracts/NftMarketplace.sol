@@ -42,10 +42,6 @@ contract NftMarketplace is ReentrancyGuard {
     mapping(address => uint256) private s_proceeds;
 
     ///////////////////////
-    /// Main Functions ///
-    //////////////////////
-
-    ///////////////////////
     /// Modifiers ///
     //////////////////////
     modifier notListed(
@@ -80,6 +76,10 @@ contract NftMarketplace is ReentrancyGuard {
         }
         _;
     }
+
+    ///////////////////////
+    /// Main Functions ///
+    //////////////////////
 
     /*
      * @notice Method for listing your NFT on th marketplace
@@ -156,10 +156,20 @@ contract NftMarketplace is ReentrancyGuard {
             revert NftMarketplace__TransferFailed();
         }
     }
-    //  Create a decentralized NFT Marketplace
-    //    1. `listItem`: List NFTs on the marketplace
-    //    2. `buyItem`: Buy the NFTs
-    //    3. `cancelItem`: Cancel a listing
-    //    4. `updateListing`: Update Price
-    //    5. `withdrawProceeds`: Withdraw payment for my bought NFTs
+
+    ///////////////////////
+    /// Getter Functions ///
+    //////////////////////
+
+    function getListing(address nftAddress, uint256 tokenId)
+        external
+        view
+        returns (Listing memory)
+    {
+        return s_listings[nftAddress][tokenId];
+    }
+
+    function getProceeds(address seller) external view returns (uint256) {
+        return s_proceeds[seller];
+    }
 }
